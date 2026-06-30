@@ -65,6 +65,8 @@
   .empty-hint{color:#999;text-align:center;padding:2rem;font-size:14px}
   .new-session-card{text-align:center;padding:2.5rem 2rem}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -327,6 +329,7 @@ function renderSessionView(){
     <div class="card">
       <div class="row" style="margin-bottom:1.25rem">
         <h2 class="flex1" style="margin-bottom:0"><span class="live-dot"></span>Ergebnisse (live)</h2>
+        <button class="btn btn-outline" id="pdf-btn">PDF herunterladen</button>
         <button class="btn btn-danger" id="clear-btn">Ergebnisse löschen</button>
       </div>
 
@@ -401,6 +404,7 @@ function renderSessionView(){
     renderLogin();
   });
   document.getElementById('clear-btn').addEventListener('click', ()=>clearResults(code));
+  document.getElementById('pdf-btn').addEventListener('click', ()=>downloadPDF(code, settings, dur, opCols, sorted));
   document.querySelectorAll('[data-toggle]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const i = btn.dataset.toggle;
@@ -424,6 +428,59 @@ function buildQR(url){
 async function clearResults(code){
   if(!confirm('Wirklich alle Ergebnisse dieser Sitzung löschen?')) return;
   try { await remove(ref(db, 'sessions/' + code + '/results')); } catch(e){ console.error(e); }
+}
+
+function downloadPDF(code, settings, dur, opCols, sorted){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const dateStr = formatDate(settings.createdAt || Date.now());
+
+  doc.setFontSize(16);
+  doc.text('Temporechnen – Ergebnisübersicht', 14, 18);
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  const zrLabel = 'ZR ' + (settings.zrs||[]).join('/');
+  const opsLabel = (settings.ops||[]).map(o=>OPS[o].label).join(' ');
+  const emELabel = (settings.ops||[]).some(o=>o==='mal'||o==='geteilt') ? (settings.kleinesEinmaleins!==false ? ' · kleines 1×1' : ' · großes 1×1') : '';
+  const durLabel = DURATIONS.find(d=>d.val===dur)?.label || '-';
+  doc.text(`Sitzungscode: ${code}  ·  ${dateStr}`, 14, 25);
+  doc.text(`${zrLabel} · ${opsLabel}${emELabel} · ${durLabel}`, 14, 31);
+
+  const avg = sorted.length ? (sorted.reduce((s,e)=>s+e.correct,0)/sorted.length).toFixed(1) : '-';
+  const avgPPM = (dur>0 && sorted.length) ? (sorted.reduce((s,e)=>s+(e.correct/(dur/60)),0)/sorted.length).toFixed(1) : null;
+  doc.text(`${sorted.length} Schüler·innen · Ø ${avg} richtig${avgPPM?` · Ø ${avgPPM} pro Minute`:''}`, 14, 37);
+
+  const head = [['#','Name','Richtig','Aufgaben', ...(dur>0?['pro Min.']:[]), ...opCols.map(o=>o.label), 'Einschätzung']];
+  const body = sorted.map((e,i)=>{
+    const ppm = dur>0 ? (e.correct/(dur/60)).toFixed(1) : '-';
+    const r = rating(e.correct, e.total, dur);
+    const opS = {};
+    opCols.forEach(o=>{ opS[o.op]={c:0,t:0}; });
+    (e.results||[]).forEach(res=>{
+      if(opS[res.task.op]){ opS[res.task.op].t++; if(res.correct) opS[res.task.op].c++; }
+    });
+    return [
+      i+1, e.name, e.correct, e.total,
+      ...(dur>0?[ppm]:[]),
+      ...opCols.map(o=>opS[o.op] && opS[o.op].t ? `${opS[o.op].c}/${opS[o.op].t}` : '-'),
+      r
+    ];
+  });
+
+  doc.autoTable({
+    head, body,
+    startY: 43,
+    styles: { fontSize: 9, cellPadding: 2.5 },
+    headStyles: { fillColor: [91,163,201], textColor: 255 },
+    alternateRowStyles: { fillColor: [244,248,250] }
+  });
+
+  const finalY = doc.lastAutoTable.finalY + 8;
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text('Einschätzung: ab 10/Min = sicher, 5-9/Min = teilweise, unter 5/Min = unsicher.', 14, finalY);
+
+  doc.save(`Temporechnen_${code}_${dateStr.replace(/[.\s:·]/g,'-')}.pdf`);
 }
 
 // ---------- SESSION LIST (for history) ----------
