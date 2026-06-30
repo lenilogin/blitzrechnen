@@ -86,7 +86,7 @@ function shuffle(arr){
   return a;
 }
 
-function genOneTask(op, zr) {
+function genOneTask(op, zr, kleinesEinmaleins) {
   let a,b,ans;
   if(op==='plus'){
     a=Math.floor(Math.random()*(zr-1))+1;
@@ -97,27 +97,40 @@ function genOneTask(op, zr) {
     b=Math.floor(Math.random()*(a-1))+1;
     ans=a-b;
   } else if(op==='mal'){
-    const maxF=Math.min(10,Math.floor(Math.sqrt(zr))||1);
-    a=Math.floor(Math.random()*maxF)+1;
-    b=Math.floor(Math.random()*maxF)+1;
+    if(kleinesEinmaleins){
+      a=Math.floor(Math.random()*10)+1;
+      b=Math.floor(Math.random()*10)+1;
+    } else {
+      const maxF=Math.max(1,Math.floor(Math.sqrt(zr)));
+      a=Math.floor(Math.random()*maxF)+1;
+      b=Math.floor(Math.random()*maxF)+1;
+    }
     ans=a*b;
   } else {
-    b=Math.floor(Math.random()*9)+2;
-    const maxA=Math.max(1,Math.floor(zr/b));
-    a=b*(Math.floor(Math.random()*maxA)+1);
-    ans=a/b;
+    if(kleinesEinmaleins){
+      const f1=Math.floor(Math.random()*10)+1;
+      const f2=Math.floor(Math.random()*10)+1;
+      a=f1*f2;
+      b=f2;
+      ans=f1;
+    } else {
+      b=Math.floor(Math.random()*9)+2;
+      const maxA=Math.max(1,Math.floor(zr/b));
+      a=b*(Math.floor(Math.random()*maxA)+1);
+      ans=a/b;
+    }
   }
   return {op,zr,sym:OPS[op].sym,a,b,ans};
 }
 
-function genTasks(ops, zrs, totalNeeded=600) {
+function genTasks(ops, zrs, kleinesEinmaleins, totalNeeded=600) {
   const combos = [];
   ops.forEach(op => zrs.forEach(zr => combos.push({op,zr})));
   if(combos.length===0) return [];
   const perCombo = Math.ceil(totalNeeded / combos.length);
   const rounds = [];
   for(let r=0; r<perCombo; r++){
-    rounds.push(shuffle(combos.map(c => genOneTask(c.op, c.zr))));
+    rounds.push(shuffle(combos.map(c => genOneTask(c.op, c.zr, kleinesEinmaleins))));
   }
   return rounds.flat();
 }
@@ -177,7 +190,7 @@ function startTest(name){
     err.style.display='block';
     return;
   }
-  const tasks = genTasks(settings.ops, settings.zrs, 600);
+  const tasks = genTasks(settings.ops, settings.zrs, settings.kleinesEinmaleins !== false, 600);
   current = {name, tasks, idx:0, results:[], timeLeft:settings.duration, startTime:Date.now()};
   renderTest();
   startTimer();

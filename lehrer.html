@@ -111,7 +111,7 @@ const DURATIONS = [
   { label: 'Endlos', val: 0 }
 ];
 
-let draftSettings = { zrs: [20], ops: ['plus','minus'], duration: 60 };
+let draftSettings = { zrs: [20], ops: ['plus','minus'], duration: 60, kleinesEinmaleins: true };
 let activeCode = null;       // Code der gerade laufenden / angesehenen Sitzung
 let sessionList = [];        // [{code, createdAt, settings, resultCount}]
 let session = [];            // Ergebnisse der aktuell angesehenen Sitzung
@@ -189,6 +189,13 @@ function renderNewSessionSetup(){
       </div>
       <p class="hint">${comboCount>1?`Jede Kombination (${comboCount} insgesamt) kommt gleich oft vor — fair für alle Kinder.`:'Nur eine Kombination ausgewählt.'}</p>
 
+      ${(draftSettings.ops.includes('mal')||draftSettings.ops.includes('geteilt'))?`
+      <div class="toggle-group" id="emE-group" style="margin-top:0.25rem">
+        <button class="toggle${draftSettings.kleinesEinmaleins?' active':''}" data-emE="1">Nur kleines 1×1 (Faktoren 1–10)</button>
+      </div>
+      <p class="hint">${draftSettings.kleinesEinmaleins?'Mal- und Geteilt-Aufgaben bleiben im kleinen Einmaleins, unabhängig vom gewählten Zahlenraum.':'Mal- und Geteilt-Aufgaben können auch größere Faktoren/Ergebnisse im gewählten Zahlenraum nutzen.'}</p>
+      `:''}
+
       <label>Dauer</label>
       <div class="toggle-group" id="dur-group">
         ${DURATIONS.map(d=>`<button class="toggle${draftSettings.duration===d.val?' active':''}" data-dur="${d.val}">${d.label}</button>`).join('')}
@@ -242,6 +249,13 @@ function renderNewSessionSetup(){
       renderNewSessionSetup();
     });
   });
+  const emEBtn = document.querySelector('#emE-group .toggle');
+  if(emEBtn){
+    emEBtn.addEventListener('click', ()=>{
+      draftSettings.kleinesEinmaleins = !draftSettings.kleinesEinmaleins;
+      renderNewSessionSetup();
+    });
+  }
   document.getElementById('create-btn').addEventListener('click', createSession);
   document.querySelectorAll('[data-open-code]').forEach(row=>{
     row.addEventListener('click', ()=>openSession(row.dataset.openCode));
@@ -303,7 +317,7 @@ function renderSessionView(){
       </div>
       <p class="sub" style="margin-bottom:0.25rem;text-align:center">Sitzungscode</p>
       <div class="code-display">${code}</div>
-      <p class="sub text-center">${formatDate(settingsRow?settingsRow.createdAt:Date.now())} · ZR ${(settings.zrs||[]).join('/')} · ${(settings.ops||[]).map(o=>OPS[o].label).join(' ')} · ${DURATIONS.find(d=>d.val===dur)?.label||'-'}</p>
+      <p class="sub text-center">${formatDate(settingsRow?settingsRow.createdAt:Date.now())} · ZR ${(settings.zrs||[]).join('/')} · ${(settings.ops||[]).map(o=>OPS[o].label).join(' ')}${(settings.ops||[]).some(o=>o==='mal'||o==='geteilt')?(settings.kleinesEinmaleins?' · kleines 1×1':' · großes 1×1'):''} · ${DURATIONS.find(d=>d.val===dur)?.label||'-'}</p>
       <div class="qr-wrap">
         <div id="qr-canvas"></div>
         <div class="url-box">${studentUrl}</div>
