@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Temporechnen — Lehreransicht</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#EAF3F8;color:#1a1a1a;min-height:100vh;padding:2rem 1rem}
+  .wrap{max-width:900px;margin:0 auto}
+  .card{background:#fff;border-radius:20px;padding:2rem;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:1.5rem}
+  .card-narrow{max-width:420px;margin:4rem auto}
+  h1{font-size:22px;font-weight:600;margin-bottom:0.25rem}
+  h2{font-size:18px;font-weight:600;margin-bottom:1rem}
+  p.sub{font-size:14px;color:#777;margin-bottom:1.5rem}
+  label{font-size:13px;color:#555;display:block;margin-bottom:0.35rem}
+  input[type=text],input[type=password],input[type=number]{width:100%;padding:0.7rem 0.9rem;border:2px solid #dde7ec;border-radius:10px;background:#fafcfd;color:#1a1a1a;font-size:16px;margin-bottom:1rem}
+  input:focus{outline:none;border-color:#5BA3C9}
+  .btn{padding:0.6rem 1.1rem;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:none;background:#5BA3C9;color:#fff;transition:opacity 0.15s}
+  .btn:hover{opacity:0.92}
+  .btn:disabled{opacity:0.35;cursor:not-allowed}
+  .btn-full{width:100%}
+  .btn-outline{background:#fff;color:#5BA3C9;border:2px solid #5BA3C9}
+  .btn-danger{background:#fff;color:#B23030;border:2px solid #f0c9c9}
+  .toggle-group{display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.4rem}
+  .toggle{padding:0.45rem 1rem;border-radius:10px;border:2px solid #dde7ec;background:#fafcfd;color:#555;font-size:13px;cursor:pointer;font-weight:600}
+  .toggle.active{background:#E4F1F8;border-color:#5BA3C9;color:#2A6E8F}
+  .hint{font-size:12px;color:#999;margin-bottom:1rem}
+  .divider{border:none;border-top:1px solid #eee;margin:1.5rem 0}
+  .badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600}
+  .badge-green{background:#E3F3E1;color:#2C7A2C}
+  .badge-amber{background:#FCEFD8;color:#B5740B}
+  .badge-red{background:#FBE2E2;color:#B23030}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:1.5rem}
+  .stat{background:#f4f8fa;border-radius:10px;padding:0.85rem 1rem}
+  .stat-val{font-size:24px;font-weight:600}
+  .stat-lbl{font-size:12px;color:#999;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:0.55rem 0.6rem;color:#999;font-weight:600;border-bottom:1px solid #eee;white-space:nowrap}
+  td{padding:0.55rem 0.6rem;border-bottom:1px solid #f3f3f3;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .qr-wrap{display:flex;flex-direction:column;align-items:center;gap:0.75rem;padding:1.25rem;background:#f4f8fa;border-radius:14px;margin-bottom:1rem}
+  .row{display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap}
+  .flex1{flex:1}
+  .text-center{text-align:center}
+  .mt1{margin-top:1rem}
+  .err{background:#FBE2E2;color:#B23030;border-radius:10px;padding:0.6rem 0.85rem;font-size:13px;margin-bottom:1rem;display:none}
+  .op-breakdown{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:0.6rem}
+  .op-cell{background:#f4f8fa;border-radius:8px;padding:0.5rem 0.7rem;font-size:13px}
+  .op-cell-lbl{color:#999;font-size:11px}
+  .op-cell-val{font-weight:600;font-size:14px}
+  .expand-btn{background:none;border:none;cursor:pointer;color:#999;font-size:12px;padding:0}
+  .details-row{display:none}
+  .details-row.open{display:table-row}
+  .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4CAF50;margin-right:6px;animation:pulse 1.5s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .url-box{font-size:12px;color:#888;word-break:break-all;background:#f4f8fa;padding:0.5rem 0.75rem;border-radius:8px;margin-top:0.5rem}
+  .code-display{font-size:48px;font-weight:700;letter-spacing:8px;text-align:center;color:#2A6E8F;margin:0.5rem 0}
+  .session-list{display:flex;flex-direction:column;gap:0.5rem}
+  .session-row{display:flex;align-items:center;gap:1rem;padding:0.75rem 1rem;background:#f4f8fa;border-radius:10px;cursor:pointer;transition:background 0.15s}
+  .session-row:hover{background:#e9f1f5}
+  .session-row.active{background:#E4F1F8;border:2px solid #5BA3C9}
+  .session-code{font-weight:700;color:#2A6E8F;font-size:15px;letter-spacing:1px}
+  .session-meta{font-size:12px;color:#999;flex:1}
+  .empty-hint{color:#999;text-align:center;padding:2rem;font-size:14px}
+  .new-session-card{text-align:center;padding:2.5rem 2rem}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, set, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAXshpUMPDL-mwDF5IwLQzwRKQji_iqdic",
+  authDomain: "blitzrechnen-kgs.firebaseapp.com",
+  databaseURL: "https://blitzrechnen-kgs-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "blitzrechnen-kgs",
+  storageBucket: "blitzrechnen-kgs.firebasestorage.app",
+  messagingSenderId: "429458144740",
+  appId: "1:429458144740:web:935259f0aaa50fa95a9bf1"
+};
+
+// ---- ANPASSEN: Passwort für die Lehreransicht ----
+const TEACHER_PASSWORD = "blitzrechnen2026";
+// ---------------------------------------------------
+
+// ---- ANPASSEN: nach dem GitHub-Pages-Upload den Basis-Pfad zu schueler.html eintragen (ohne ?code=...) ----
+const STUDENT_URL_BASE = "https://DEIN-GITHUB-NAME.github.io/DEIN-REPO/schueler.html";
+// -------------------------------------------------------------------------------------------------------
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+const auth = getAuth(fbApp);
+
+const OPS = {
+  plus: { label: '+' },
+  minus: { label: '−' },
+  mal: { label: '×' },
+  geteilt: { label: '÷' }
+};
+const ZRS = [10,20,100,1000];
+const DURATIONS = [
+  { label: '60 Sekunden', val: 60 },
+  { label: '5 Minuten', val: 300 },
+  { label: '10 Minuten', val: 600 },
+  { label: '15 Minuten', val: 900 },
+  { label: 'Endlos', val: 0 }
+];
+
+let draftSettings = { zrs: [20], ops: ['plus','minus'], duration: 60 };
+let activeCode = null;       // Code der gerade laufenden / angesehenen Sitzung
+let sessionList = [];        // [{code, createdAt, settings, resultCount}]
+let session = [];            // Ergebnisse der aktuell angesehenen Sitzung
+let unsubscribeResults = null;
+let unsubscribeList = null;
+
+const app = document.getElementById('app');
+
+function rating(correct,total,dur){
+  const ppm = dur>0 ? correct/(dur/60) : correct;
+  if(ppm>=10) return 'sicher';
+  if(ppm>=5) return 'teilweise';
+  return 'unsicher';
+}
+function ratingClass(r){
+  return r==='sicher'?'badge-green':r==='teilweise'?'badge-amber':'badge-red';
+}
+function formatDate(ts){
+  const d = new Date(ts);
+  return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}) + ' · ' + d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+}
+function genCode(){
+  return String(Math.floor(1000 + Math.random()*9000));
+}
+
+// ---------- LOGIN ----------
+
+function renderLogin(){
+  app.innerHTML = `
+  <div class="wrap">
+    <div class="card card-narrow">
+      <h1>Lehreransicht</h1>
+      <p class="sub">Bitte Passwort eingeben.</p>
+      <div class="err" id="err-box">Falsches Passwort.</div>
+      <label>Passwort</label>
+      <input type="password" id="pw-input" autofocus>
+      <button class="btn btn-full" id="login-btn">Anmelden</button>
+    </div>
+  </div>`;
+  const inp = document.getElementById('pw-input');
+  const btn = document.getElementById('login-btn');
+  const tryLogin = ()=>{
+    if(inp.value === TEACHER_PASSWORD){
+      sessionStorage.setItem('temporechnen_auth','1');
+      initTeacher();
+    } else {
+      document.getElementById('err-box').style.display='block';
+    }
+  };
+  btn.addEventListener('click', tryLogin);
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
+}
+
+// ---------- NEW SESSION SETUP ----------
+
+function renderNewSessionSetup(){
+  const comboCount = draftSettings.zrs.length * draftSettings.ops.length;
+  app.innerHTML = `
+  <div class="wrap">
+    <div class="card">
+      <div class="row" style="margin-bottom:1.25rem">
+        <div class="flex1"><h1 style="margin-bottom:0">Neue Sitzung einrichten</h1></div>
+        <button class="btn btn-outline" id="logout-btn">Abmelden</button>
+      </div>
+
+      <label>Zahlenraum (Mehrfachauswahl)</label>
+      <div class="toggle-group" id="zr-group">
+        ${ZRS.map(z=>`<button class="toggle${draftSettings.zrs.includes(z)?' active':''}" data-zr="${z}">bis ${z}</button>`).join('')}
+      </div>
+      <p class="hint">${draftSettings.zrs.length>1?'Aufgaben aus allen gewählten Zahlenräumen werden gleichmäßig gemischt.':'Nur ein Zahlenraum ausgewählt.'}</p>
+
+      <label>Rechenarten (Mehrfachauswahl)</label>
+      <div class="toggle-group" id="ops-group">
+        ${Object.entries(OPS).map(([k,v])=>`<button class="toggle${draftSettings.ops.includes(k)?' active':''}" data-op="${k}">${v.label}</button>`).join('')}
+      </div>
+      <p class="hint">${comboCount>1?`Jede Kombination (${comboCount} insgesamt) kommt gleich oft vor — fair für alle Kinder.`:'Nur eine Kombination ausgewählt.'}</p>
+
+      <label>Dauer</label>
+      <div class="toggle-group" id="dur-group">
+        ${DURATIONS.map(d=>`<button class="toggle${draftSettings.duration===d.val?' active':''}" data-dur="${d.val}">${d.label}</button>`).join('')}
+      </div>
+
+      <button class="btn mt1" id="create-btn">Sitzung starten →</button>
+    </div>
+
+    <div class="card">
+      <h2>Frühere Sitzungen</h2>
+      ${sessionList.length===0?`<p class="empty-hint">Noch keine Sitzungen durchgeführt.</p>`:`
+      <div class="session-list">
+        ${sessionList.slice().sort((a,b)=>b.createdAt-a.createdAt).map(s=>`
+          <div class="session-row" data-open-code="${s.code}">
+            <span class="session-code">${s.code}</span>
+            <span class="session-meta">${formatDate(s.createdAt)} · ${s.resultCount||0} Schüler·innen</span>
+            <span style="color:#5BA3C9;font-size:13px;font-weight:600">Öffnen →</span>
+          </div>
+        `).join('')}
+      </div>
+      `}
+    </div>
+  </div>`;
+
+  document.getElementById('logout-btn').addEventListener('click', ()=>{
+    sessionStorage.removeItem('temporechnen_auth');
+    teardownListeners();
+    renderLogin();
+  });
+  document.querySelectorAll('#zr-group .toggle').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const z = parseInt(btn.dataset.zr,10);
+      const idx = draftSettings.zrs.indexOf(z);
+      if(idx>=0){ if(draftSettings.zrs.length>1) draftSettings.zrs.splice(idx,1); }
+      else draftSettings.zrs.push(z);
+      renderNewSessionSetup();
+    });
+  });
+  document.querySelectorAll('#ops-group .toggle').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const op = btn.dataset.op;
+      const idx = draftSettings.ops.indexOf(op);
+      if(idx>=0){ if(draftSettings.ops.length>1) draftSettings.ops.splice(idx,1); }
+      else draftSettings.ops.push(op);
+      renderNewSessionSetup();
+    });
+  });
+  document.querySelectorAll('#dur-group .toggle').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      draftSettings.duration = parseInt(btn.dataset.dur,10);
+      renderNewSessionSetup();
+    });
+  });
+  document.getElementById('create-btn').addEventListener('click', createSession);
+  document.querySelectorAll('[data-open-code]').forEach(row=>{
+    row.addEventListener('click', ()=>openSession(row.dataset.openCode));
+  });
+}
+
+async function createSession(){
+  let code = genCode();
+  // Kollision vermeiden (extrem unwahrscheinlich, aber sauber)
+  let tries = 0;
+  while(tries < 5){
+    const snap = await get(ref(db, 'sessions/' + code + '/settings'));
+    if(!snap.exists()) break;
+    code = genCode();
+    tries++;
+  }
+  const settingsToSave = {...draftSettings, createdAt: Date.now()};
+  try {
+    await set(ref(db, 'sessions/' + code + '/settings'), settingsToSave);
+    activeCode = code;
+    openSession(code);
+  } catch(e){
+    console.error(e);
+    alert('Konnte Sitzung nicht erstellen: ' + e.message);
+  }
+}
+
+// ---------- ACTIVE SESSION VIEW ----------
+
+function openSession(code){
+  activeCode = code;
+  if(unsubscribeResults) unsubscribeResults();
+  unsubscribeResults = onValue(ref(db, 'sessions/' + code + '/results'), (snap)=>{
+    const val = snap.val() || {};
+    session = Object.values(val);
+    renderSessionView();
+  });
+}
+
+function renderSessionView(){
+  const code = activeCode;
+  const settingsRow = sessionList.find(s=>s.code===code);
+  const settings = settingsRow ? settingsRow.settings : draftSettings;
+  const dur = settings.duration;
+  const studentUrl = STUDENT_URL_BASE + '?code=' + code;
+
+  const avg = session.length ? (session.reduce((s,e)=>s+e.correct,0)/session.length).toFixed(1) : '-';
+  const avgPPM = (dur>0 && session.length) ? (session.reduce((s,e)=>s+(e.correct/(dur/60)),0)/session.length).toFixed(1) : null;
+  const sorted = [...session].sort((a,b)=>b.correct-a.correct);
+  const opCols = (settings.ops||[]).map(op=>({op, label:OPS[op].label}));
+
+  app.innerHTML = `
+  <div class="wrap">
+    <div class="card">
+      <div class="row" style="margin-bottom:1rem">
+        <button class="btn btn-outline" id="back-btn">← Alle Sitzungen</button>
+        <span class="flex1"></span>
+        <button class="btn btn-outline" id="logout-btn">Abmelden</button>
+      </div>
+      <p class="sub" style="margin-bottom:0.25rem;text-align:center">Sitzungscode</p>
+      <div class="code-display">${code}</div>
+      <p class="sub text-center">${formatDate(settingsRow?settingsRow.createdAt:Date.now())} · ZR ${(settings.zrs||[]).join('/')} · ${(settings.ops||[]).map(o=>OPS[o].label).join(' ')} · ${DURATIONS.find(d=>d.val===dur)?.label||'-'}</p>
+      <div class="qr-wrap">
+        <div id="qr-canvas"></div>
+        <div class="url-box">${studentUrl}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:1.25rem">
+        <h2 class="flex1" style="margin-bottom:0"><span class="live-dot"></span>Ergebnisse (live)</h2>
+        <button class="btn btn-danger" id="clear-btn">Ergebnisse löschen</button>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-val">${session.length}</div><div class="stat-lbl">Schüler·innen</div></div>
+        <div class="stat"><div class="stat-val">${avg}</div><div class="stat-lbl">ø richtig</div></div>
+        ${avgPPM?`<div class="stat"><div class="stat-val">${avgPPM}</div><div class="stat-lbl">ø pro Minute</div></div>`:''}
+      </div>
+
+      ${session.length===0?`<p class="empty-hint">Noch keine Ergebnisse. Schüler·innen können per QR-Code beitreten.</p>`:`
+      <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Name</th><th>Richtig</th><th>Aufgaben</th>
+            ${dur>0?'<th>pro Min.</th>':''}
+            ${opCols.map(o=>`<th style="text-align:center">${o.label}</th>`).join('')}
+            <th>Einschätzung</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sorted.map((e,i)=>{
+            const ppm = dur>0?(e.correct/(dur/60)).toFixed(1):'-';
+            const r = rating(e.correct,e.total,dur);
+            const opS = {};
+            opCols.forEach(o=>{ opS[o.op]={c:0,t:0}; });
+            (e.results||[]).forEach(res=>{
+              if(opS[res.task.op]){ opS[res.task.op].t++; if(res.correct) opS[res.task.op].c++; }
+            });
+            return `
+            <tr>
+              <td style="color:#bbb">${i+1}</td>
+              <td style="font-weight:600">${e.name}</td>
+              <td style="font-weight:600;color:#2A6E8F">${e.correct}</td>
+              <td style="color:#999">${e.total}</td>
+              ${dur>0?`<td style="color:#999">${ppm}</td>`:''}
+              ${opCols.map(o=>`<td style="text-align:center;color:#555">${opS[o.op]?`${opS[o.op].c}/${opS[o.op].t}`:'-'}</td>`).join('')}
+              <td><span class="badge ${ratingClass(r)}">${r}</span></td>
+              <td><button class="expand-btn" data-toggle="${i}">▼</button></td>
+            </tr>
+            <tr class="details-row" id="details-${i}">
+              <td colspan="20" style="padding:0.75rem 1rem">
+                <div class="op-breakdown">
+                  ${opCols.map(o=>{
+                    const s=opS[o.op];
+                    if(!s||s.t===0) return '';
+                    const pct2=s.t?Math.round(s.c/s.t*100):0;
+                    return `<div class="op-cell"><div class="op-cell-lbl">${OPS[o.op].label}</div><div class="op-cell-val">${s.c}/${s.t} <span style="color:#999;font-weight:400">(${pct2}%)</span></div></div>`;
+                  }).join('')}
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      </div>
+      `}
+
+      <hr class="divider">
+      <p style="font-size:12px;color:#999">Einschätzung: ≥ 10/Min = <span style="color:#2C7A2C;font-weight:600">sicher</span> · 5–9/Min = <span style="color:#B5740B;font-weight:600">teilweise</span> · &lt; 5/Min = <span style="color:#B23030;font-weight:600">unsicher</span></p>
+    </div>
+  </div>`;
+
+  document.getElementById('back-btn').addEventListener('click', ()=>{
+    if(unsubscribeResults){ unsubscribeResults(); unsubscribeResults=null; }
+    activeCode = null;
+    renderNewSessionSetup();
+  });
+  document.getElementById('logout-btn').addEventListener('click', ()=>{
+    sessionStorage.removeItem('temporechnen_auth');
+    teardownListeners();
+    renderLogin();
+  });
+  document.getElementById('clear-btn').addEventListener('click', ()=>clearResults(code));
+  document.querySelectorAll('[data-toggle]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const i = btn.dataset.toggle;
+      const row = document.getElementById('details-'+i);
+      const open = row.classList.contains('open');
+      row.classList.toggle('open', !open);
+      btn.textContent = open ? '▼' : '▲';
+    });
+  });
+
+  buildQR(studentUrl);
+}
+
+function buildQR(url){
+  const el = document.getElementById('qr-canvas');
+  if(!el) return;
+  el.innerHTML = '';
+  new QRCode(el, {text: url, width:180, height:180, colorDark:'#1a1a1a', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.M});
+}
+
+async function clearResults(code){
+  if(!confirm('Wirklich alle Ergebnisse dieser Sitzung löschen?')) return;
+  try { await remove(ref(db, 'sessions/' + code + '/results')); } catch(e){ console.error(e); }
+}
+
+// ---------- SESSION LIST (for history) ----------
+
+function listenSessionList(){
+  if(unsubscribeList) unsubscribeList();
+  unsubscribeList = onValue(ref(db, 'sessions'), (snap)=>{
+    const val = snap.val() || {};
+    sessionList = Object.entries(val).map(([code, data])=>({
+      code,
+      createdAt: data.settings ? data.settings.createdAt : 0,
+      settings: data.settings || {},
+      resultCount: data.results ? Object.keys(data.results).length : 0
+    }));
+    if(!activeCode) renderNewSessionSetup();
+  });
+}
+
+function teardownListeners(){
+  if(unsubscribeResults){ unsubscribeResults(); unsubscribeResults=null; }
+  if(unsubscribeList){ unsubscribeList(); unsubscribeList=null; }
+  activeCode = null;
+}
+
+async function initTeacher(){
+  try { await signInAnonymously(auth); } catch(e){ console.error(e); }
+  listenSessionList();
+}
+
+// init
+if(sessionStorage.getItem('temporechnen_auth')==='1'){
+  initTeacher();
+} else {
+  renderLogin();
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</body>
+</html>

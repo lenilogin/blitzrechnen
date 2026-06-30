@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Temporechnen</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#EAF3F8;color:#1a1a1a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
+  .card{background:#fff;border-radius:20px;padding:2rem;width:100%;max-width:420px;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+  h1{font-size:22px;font-weight:600;margin-bottom:0.25rem;text-align:center}
+  p.sub{font-size:14px;color:#777;margin-bottom:1.5rem;text-align:center}
+  label{font-size:13px;color:#555;display:block;margin-bottom:0.35rem}
+  input[type=text],input[type=number]{width:100%;padding:0.7rem 0.9rem;border:2px solid #dde7ec;border-radius:10px;background:#fafcfd;color:#1a1a1a;font-size:16px;margin-bottom:1rem}
+  input:focus{outline:none;border-color:#5BA3C9}
+  .btn{width:100%;padding:0.75rem 1rem;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;border:none;background:#5BA3C9;color:#fff;transition:opacity 0.15s}
+  .btn:hover{opacity:0.92}
+  .btn:disabled{opacity:0.35;cursor:not-allowed}
+  .timer-bar-wrap{width:100%;height:8px;background:#eee;border-radius:99px;overflow:hidden;margin-bottom:0.5rem}
+  .timer-bar{height:100%;border-radius:99px;transition:width 1s linear,background 0.5s;background:#5BA3C9}
+  .timer-text{text-align:right;font-size:12px;color:#999;margin-bottom:1.25rem}
+  .task-display{font-size:46px;font-weight:600;text-align:center;margin:1.25rem 0 0.25rem;letter-spacing:-1px}
+  .task-zr{text-align:center;font-size:11px;color:#aaa;margin-bottom:1rem}
+  .task-input{text-align:center;font-size:32px;font-weight:600}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin:1.25rem 0}
+  .stat{background:#f4f8fa;border-radius:10px;padding:0.75rem}
+  .stat-val{font-size:22px;font-weight:600}
+  .stat-lbl{font-size:11px;color:#999;margin-top:2px}
+  .badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600}
+  .badge-green{background:#E3F3E1;color:#2C7A2C}
+  .badge-amber{background:#FCEFD8;color:#B5740B}
+  .badge-red{background:#FBE2E2;color:#B23030}
+  .center{text-align:center}
+  .err{background:#FBE2E2;color:#B23030;border-radius:10px;padding:0.6rem 0.85rem;font-size:13px;margin-bottom:1rem;display:none}
+  .row{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem}
+  .row span{font-size:13px;color:#999}
+  .code-pill{display:inline-block;background:#E4F1F8;color:#2A6E8F;font-weight:700;letter-spacing:2px;padding:0.3rem 0.8rem;border-radius:8px;font-size:14px;margin-bottom:1rem}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, push, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAXshpUMPDL-mwDF5IwLQzwRKQji_iqdic",
+  authDomain: "blitzrechnen-kgs.firebaseapp.com",
+  databaseURL: "https://blitzrechnen-kgs-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "blitzrechnen-kgs",
+  storageBucket: "blitzrechnen-kgs.firebasestorage.app",
+  messagingSenderId: "429458144740",
+  appId: "1:429458144740:web:935259f0aaa50fa95a9bf1"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+const auth = getAuth(fbApp);
+
+const OPS = {
+  plus: { sym: '+' },
+  minus: { sym: '−' },
+  mal: { sym: '×' },
+  geteilt: { sym: '÷' }
+};
+
+// Sitzungscode kommt aus der URL: schueler.html?code=4827
+const params = new URLSearchParams(window.location.search);
+const sessionCode = (params.get('code') || '').trim();
+
+let settings = null;
+let current = null;
+let timer = null;
+
+const app = document.getElementById('app');
+
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function genOneTask(op, zr) {
+  let a,b,ans;
+  if(op==='plus'){
+    a=Math.floor(Math.random()*(zr-1))+1;
+    b=Math.floor(Math.random()*(zr-a))+1;
+    ans=a+b;
+  } else if(op==='minus'){
+    a=Math.floor(Math.random()*(zr-1))+2;
+    b=Math.floor(Math.random()*(a-1))+1;
+    ans=a-b;
+  } else if(op==='mal'){
+    const maxF=Math.min(10,Math.floor(Math.sqrt(zr))||1);
+    a=Math.floor(Math.random()*maxF)+1;
+    b=Math.floor(Math.random()*maxF)+1;
+    ans=a*b;
+  } else {
+    b=Math.floor(Math.random()*9)+2;
+    const maxA=Math.max(1,Math.floor(zr/b));
+    a=b*(Math.floor(Math.random()*maxA)+1);
+    ans=a/b;
+  }
+  return {op,zr,sym:OPS[op].sym,a,b,ans};
+}
+
+function genTasks(ops, zrs, totalNeeded=600) {
+  const combos = [];
+  ops.forEach(op => zrs.forEach(zr => combos.push({op,zr})));
+  if(combos.length===0) return [];
+  const perCombo = Math.ceil(totalNeeded / combos.length);
+  const rounds = [];
+  for(let r=0; r<perCombo; r++){
+    rounds.push(shuffle(combos.map(c => genOneTask(c.op, c.zr))));
+  }
+  return rounds.flat();
+}
+
+function rating(correct,total,dur){
+  const ppm = dur>0 ? correct/(dur/60) : correct;
+  if(ppm>=10) return 'sicher';
+  if(ppm>=5) return 'teilweise';
+  return 'unsicher';
+}
+function ratingClass(r){
+  return r==='sicher'?'badge-green':r==='teilweise'?'badge-amber':'badge-red';
+}
+function formatTime(s){
+  if(s<=0) return '0:00';
+  const m=Math.floor(s/60);
+  const sec=s%60;
+  return m+':'+(sec<10?'0':'')+sec;
+}
+
+function renderLoading(msg){
+  app.innerHTML = `<div class="card center"><p>${msg||'Wird geladen…'}</p></div>`;
+}
+
+function renderInvalidCode(){
+  app.innerHTML = `
+  <div class="card center">
+    <div style="font-size:40px;margin-bottom:1rem">🤔</div>
+    <h1>Kein gültiger Code</h1>
+    <p class="sub">Bitte scanne den QR-Code, den deine Lehrkraft gerade zeigt. Der Link sollte automatisch den Sitzungscode enthalten.</p>
+  </div>`;
+}
+
+function renderName(){
+  app.innerHTML = `
+  <div class="card">
+    <div style="font-size:40px;text-align:center;margin-bottom:0.5rem">👋</div>
+    <div class="center"><span class="code-pill">${sessionCode}</span></div>
+    <h1>Wie heißt du?</h1>
+    <p class="sub">Gib deinen Spitznamen ein und dann geht's los!</p>
+    <div class="err" id="err-box"></div>
+    <label>Dein Spitzname</label>
+    <input type="text" id="name-input" placeholder="z. B. Blitzdrache" autofocus maxlength="20">
+    <button class="btn" id="start-btn" disabled>Los geht's →</button>
+  </div>`;
+  const inp = document.getElementById('name-input');
+  const btn = document.getElementById('start-btn');
+  inp.addEventListener('input',()=>btn.disabled=!inp.value.trim());
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&inp.value.trim()) startTest(inp.value.trim()); });
+  btn.addEventListener('click',()=>startTest(inp.value.trim()));
+}
+
+function startTest(name){
+  if(!settings || settings.ops.length===0 || settings.zrs.length===0){
+    const err = document.getElementById('err-box');
+    err.textContent = 'Die Lehrkraft hat den Test noch nicht eingerichtet. Bitte kurz warten.';
+    err.style.display='block';
+    return;
+  }
+  const tasks = genTasks(settings.ops, settings.zrs, 600);
+  current = {name, tasks, idx:0, results:[], timeLeft:settings.duration, startTime:Date.now()};
+  renderTest();
+  startTimer();
+}
+
+function renderTest(){
+  const c = current;
+  const task = c.tasks[c.idx];
+  const dur = settings.duration;
+  const pct = dur>0 ? (c.timeLeft/dur)*100 : 100;
+  const barColor = dur===0?'#5BA3C9':c.timeLeft>dur*0.33?'#5BA3C9':c.timeLeft>dur*0.15?'#E0A030':'#D9534F';
+  const timeStr = dur===0?'∞':formatTime(c.timeLeft);
+
+  app.innerHTML = `
+  <div class="card">
+    <div class="row">
+      <span>${c.name}</span>
+      <span style="flex:1"></span>
+      <span>Aufgabe ${c.idx+1}</span>
+    </div>
+    <div class="timer-bar-wrap"><div class="timer-bar" id="bar" style="width:${pct}%;background:${barColor}"></div></div>
+    <div class="timer-text" id="time-text">${timeStr}</div>
+    <div class="task-display">${task.a} ${task.sym} ${task.b} =</div>
+    <div class="task-zr">ZR ${task.zr}</div>
+    <input type="number" class="task-input" id="ans-input" placeholder="?" autofocus inputmode="numeric">
+    <button class="btn" id="weiter-btn" disabled>Weiter →</button>
+  </div>`;
+  const inp = document.getElementById('ans-input');
+  const btn = document.getElementById('weiter-btn');
+  inp.addEventListener('input',()=>btn.disabled=inp.value==='');
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'&&inp.value!=='') submitAnswer(); });
+  btn.addEventListener('click',submitAnswer);
+  inp.focus();
+}
+
+function startTimer(){
+  if(timer) clearInterval(timer);
+  if(settings.duration===0) return;
+  timer = setInterval(()=>{
+    if(!current) return;
+    current.timeLeft--;
+    const bar = document.getElementById('bar');
+    const dur = settings.duration;
+    if(bar){
+      const pct = (current.timeLeft/dur)*100;
+      bar.style.width = pct+'%';
+      bar.style.background = current.timeLeft>dur*0.33?'#5BA3C9':current.timeLeft>dur*0.15?'#E0A030':'#D9534F';
+    }
+    const tEl = document.getElementById('time-text');
+    if(tEl) tEl.textContent = formatTime(current.timeLeft);
+    if(current.timeLeft<=0){ clearInterval(timer); finishTest(); }
+  },1000);
+}
+
+function submitAnswer(){
+  const inp = document.getElementById('ans-input');
+  if(!inp || inp.value==='') return;
+  const given = parseInt(inp.value,10);
+  const task = current.tasks[current.idx];
+  const correct = given===task.ans;
+  current.results.push({task,given,correct});
+  current.idx++;
+  if(current.idx>=current.tasks.length){ finishTest(); return; }
+  renderTest();
+  startTimer();
+}
+
+async function finishTest(){
+  if(timer){ clearInterval(timer); timer=null; }
+  const c = current;
+  const cor = c.results.filter(r=>r.correct).length;
+  const entry = {
+    name: c.name,
+    correct: cor,
+    total: c.results.length,
+    results: c.results.map(r=>({task:{op:r.task.op,zr:r.task.zr,a:r.task.a,b:r.task.b,ans:r.task.ans},given:r.given,correct:r.correct})),
+    duration: settings.duration,
+    timestamp: Date.now()
+  };
+
+  try {
+    await push(ref(db, 'sessions/' + sessionCode + '/results'), entry);
+  } catch(e){
+    console.error('Konnte Ergebnis nicht senden:', e);
+  }
+
+  renderDone(entry);
+}
+
+function renderDone(entry){
+  const dur = settings.duration>0 ? settings.duration : null;
+  const ppm = dur ? (entry.correct/(dur/60)).toFixed(1) : entry.correct;
+  const r = rating(entry.correct, entry.total, settings.duration);
+
+  app.innerHTML = `
+  <div class="card center">
+    <div style="font-size:48px;margin-bottom:0.5rem">${r==='sicher'?'🌟':r==='teilweise'?'👍':'💪'}</div>
+    <h1>${r==='sicher'?'Super gemacht!':r==='teilweise'?'Gut gemacht!':'Weiter üben!'}</h1>
+    <p class="sub">${entry.name}</p>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-val">${entry.correct}/${entry.total}</div><div class="stat-lbl">richtig</div></div>
+      ${dur?`<div class="stat"><div class="stat-val">${ppm}</div><div class="stat-lbl">pro Minute</div></div>`:''}
+      <div class="stat"><div class="stat-val"><span class="badge ${ratingClass(r)}">${r}</span></div><div class="stat-lbl">Einschätzung</div></div>
+    </div>
+    <button class="btn" id="next-btn">Nächste/r →</button>
+  </div>`;
+  document.getElementById('next-btn').addEventListener('click', renderName);
+}
+
+// init
+(async function init(){
+  if(!sessionCode || !/^[0-9]{4}$/.test(sessionCode)){
+    renderInvalidCode();
+    return;
+  }
+  renderLoading();
+  try { await signInAnonymously(auth); } catch(e){ console.error(e); }
+
+  try {
+    const snap = await get(ref(db, 'sessions/' + sessionCode + '/settings'));
+    if(!snap.exists()){
+      renderLoading('Diese Sitzung wurde noch nicht gestartet. Bitte kurz warten oder neu scannen.');
+      return;
+    }
+    settings = snap.val();
+  } catch(e){
+    console.error(e);
+    renderLoading('Verbindung fehlgeschlagen. Bitte neu laden.');
+    return;
+  }
+
+  renderName();
+})();
+</script>
+</body>
+</html>
